@@ -16,6 +16,80 @@ page_navbar(
   ),
   
   #----------------------------------------------------------
+  # Athlete Info Tab
+  #----------------------------------------------------------
+  nav_panel(
+    title = 'Athlete Overview',
+    fluidRow(
+      layout_columns(
+        col_widths = c(3, 9),
+        
+        card(
+          card_header(
+            'Select Athlete To View'
+          ),
+          
+          selectInput(
+            inputId = 'sel_athlete',
+            label   = '',
+            choices = weight_choices
+          ),
+          
+          uiOutput(
+            outputId = 'showcase_weight_change'
+          )
+        ),
+        
+        card(
+          card_header(
+            'Athlete Body Weight Over Time'
+          ),
+
+          plotlyOutput(
+            outputId = 'plot_ath_weight'
+          )
+        )
+      )
+    ),
+    
+    fluidRow(
+      layout_columns(
+        col_widths = c(3, 9),
+        
+        card(
+          card_header(
+            'Select Lift'
+          ),
+          
+          selectInput(
+            inputId = 'sel_lift_ath',
+            label   = '',
+            choices = lift_choices
+          ),
+          
+          uiOutput(
+            outputId = 'showcase_lift_estMax'
+          ),
+          
+          uiOutput(
+            outputId = 'showcase_lift_best'
+          )
+        ),
+        
+        card(
+          card_header(
+            'Estimated 1-RM Over Time'
+          ),
+          
+          plotlyOutput(
+            outputId = 'plot_ath_lift'
+          )
+        )
+      )
+    )
+    
+  ),
+  #----------------------------------------------------------
   # Athlete Tab
   #----------------------------------------------------------
   nav_panel(
@@ -135,34 +209,6 @@ page_navbar(
         dataTableOutput(
           outputId = 'ex_table'
         )
-      )
-    )
-  ),
-  
-  #----------------------------------------------------------
-  # Bodyweight Tab
-  #----------------------------------------------------------
-  nav_panel(
-    title = 'Bodyweight',
-    
-    layout_columns(
-      col_widths = c(4, 8),
-      
-      card(
-        selectInput(
-          inputId = 'sel_weight_ath',
-          label   = 'Select Athlete To View',
-          choices = weight_choices
-        ),
-        
-        uiOutput(
-          outputId = 'showcase_weight_change'
-        )
-      ),
-      
-      
-      plotlyOutput(
-        outputId = 'plot_ath_weight'
       )
     )
   )

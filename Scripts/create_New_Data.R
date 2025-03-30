@@ -41,24 +41,21 @@ createNewAthlete <- function(con, tbl_athletes, sheet_ID) {
                           last   = new_LastName,
                           dob    = new_DOB,
                           gender = new_Gender)
-  print(query)
+
   dbExecute(con,
             statement = query)
-  dbGetQuery(con,
-             statement = 'SELECT * FROM ATHLETES') %>%
-    sheet_write(ss = sheet_ID,
-                sheet = 'ATHLETES')
+  print(paste0('Created athlete: ', new_FirstName, ' ', new_LastName))
 }
 
-createNewWeight  <- function(con, sheet_ID, athlete_id) {
-  today <- Sys.Date() %>% as.integer() * 3600 * 24
+createNewWeight  <- function(con, sheet_ID, athlete_id, date) {
+  today <- date
   
   athlete_ids <- dbGetQuery(con,
                             statement = 'SELECT DISTINCT Athlete_ID FROM ATHLETES')
 
   sql <- 'SELECT * FROM WEIGHT
-          WHERE Athlete_Id = ?id AND 
-            Date = (SELECT MAX(Date) FROM WEIGHT)'
+          WHERE Athlete_Id = ?id
+          ORDER BY Date DESC LIMIT 1'
   query <- sqlInterpolate(con,
                           sql = sql,
                           id  = athlete_id)
@@ -87,15 +84,12 @@ createNewWeight  <- function(con, sheet_ID, athlete_id) {
                           comp   = last_comp)
   dbExecute(con,
             statement = query)
-  dbGetQuery(con,
-             statement = 'SELECT * FROM WEIGHT ORDER BY Athlete_ID') %>%
-    sheet_write(ss = sheet_ID,
-                sheet = 'WEIGHT')
+  
+  print(paste0('New Weight for ID: ', athlete_id))
 }
 
-createNewSession <- function(con, sheet_ID, athlete_id, lift_ids) {
-  today <- Sys.Date() %>% as.integer() * 3600 * 24
-
+createNewSession <- function(con, sheet_ID, athlete_id, lift_ids, date) {
+  today <- date
   num_lifts <- ceiling(runif(1) * 4)
   lifts     <- sample(lift_ids, num_lifts)
   
@@ -131,10 +125,7 @@ createNewSession <- function(con, sheet_ID, athlete_id, lift_ids) {
     }
   }
   
-  dbGetQuery(con,
-             statement = 'SELECT * FROM SESSION ORDER BY Athlete_ID, Session_Date') %>%
-    sheet_write(ss = sheet_ID,
-                sheet = 'SESSION')
+  print(paste0('New session for ID ', athlete_id))
 }
 
 updateMaxes      <- function(con, sheet_ID, athlete_id, lift_id, est_1rm) {
@@ -160,12 +151,6 @@ updateMaxes      <- function(con, sheet_ID, athlete_id, lift_id, est_1rm) {
                             max     = est_1rm)
     dbExecute(con,
               statement = query)
-    
-    dbGetQuery(con,
-               statement = 'SELECT * FROM MAXES') %>%
-      sheet_write(ss = sheet_ID,
-                  sheet = 'MAXES')
-    
   } else if (est_1rm > athlete_maxes$Lift_Max[1]) {
     sql <- 'UPDATE MAXES
             SET Lift_Max = ?max
@@ -178,11 +163,6 @@ updateMaxes      <- function(con, sheet_ID, athlete_id, lift_id, est_1rm) {
                             lift    = lift_id)
     dbExecute(con,
               statement = query)
-    
-    dbGetQuery(con,
-               statement = 'SELECT * FROM MAXES ORDER BY Athlete_ID') %>%
-      sheet_write(ss = sheet_ID,
-                  sheet = 'MAXES')
   }
 }
 
@@ -193,29 +173,56 @@ main <- function() {
   createDatabase(con = con,
                  sheet_ID = sheet_ID)
   
-  random_check <- runif(1)
-  
-  if (random_check < 0.2) {
-    query <- 'SELECT * FROM ATHLETES'
-    athlete_df <- as.data.frame(dbGetQuery(con,
-                                           query))
-    createNewAthlete(con, athlete_df, sheet_ID)
-  }
-  
-  athlete_ids <- dbGetQuery(con,
-                            statement = 'SELECT DISTINCT Athlete_ID FROM ATHLETES')
-  lift_ids    <- dbGetQuery(con,
-                            statement = 'SELECT DISTINCT Lift_ID FROM LIFTS')
-  
-  for (athlete_id in athlete_ids$Athlete_ID) {
+  today <- as.integer(Sys.Date()) * 3600 * 24 - 50 * 3600 * 24
+  lifts <- list()
+  ids <- list()
+  for (day in 1:50) {
     random_check <- runif(1)
-    
-    if (random_check < 0.9) {
-      createNewWeight(con, sheet_ID, athlete_id)
+  
+    if (random_check < 0.2) {
+      query <- 'SELECT * FROM ATHLETES'
+      athlete_df <- as.data.frame(dbGetQuery(con,
+                                             query))
+      createNewAthlete(con, athlete_df, sheet_ID)
     }
     
-    if (random_check < 0.66) {
-      createNewSession(con, sheet_ID, athlete_id, lift_ids$Lift_ID)
+    athlete_ids <- dbGetQuery(con,
+                              statement = 'SELECT DISTINCT Athlete_ID FROM ATHLETES')
+    lift_ids    <- dbGetQuery(con,
+                              statement = 'SELECT DISTINCT Lift_ID FROM LIFTS')
+    
+    for (athlete_id in athlete_ids$Athlete_ID) {
+      ids <- append(ids, athlete_id)
+      lifts <- append(lifts, list(sample(lift_ids$Lift_ID, 10)))
+      names(lifts) <- ids
+      
+      random_check <- runif(1)
+      
+      if (random_check < 0.9) {
+        createNewWeight(con, sheet_ID, athlete_id, today)
+      }
+      
+      if (random_check < 0.66) {
+        createNewSession(con, sheet_ID, athlete_id, lifts[[as.character(athlete_id)]], today)
+      }
+    }
+    
+    today <- today + 3600 * 24
+  }
+  
+  for (sheet in sheet_names(sheet_ID)) {
+    if (sheet != 'LIFTS') {
+      sql <- 'SELECT * FROM ?table ORDER BY Athlete_ID'
+      query <- sqlInterpolate(
+        con,
+        sql = sql,
+        table = sheet
+      )
+        
+      dbGetQuery(con,
+                 statement = query) %>%
+        sheet_write(ss = sheet_ID,
+                    sheet = sheet)
     }
   }
 }

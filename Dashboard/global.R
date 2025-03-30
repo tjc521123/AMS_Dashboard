@@ -35,4 +35,25 @@ weight_choices <- dbGetQuery(
             ORDER BY NAME'
 )
 
+sql <-'SELECT DISTINCT Lift_Name
+       FROM LIFTS
+       WHERE Lift_ID IN (SELECT Lift_ID FROM SESSION
+                         WHERE Athlete_ID IN (SELECT Athlete_ID 
+                                              FROM ATHLETES
+                                              WHERE CONCAT(Athlete_LastName, ", ", Athlete_FirstName) = ?name))'
+query <- sqlInterpolate(
+  con,
+  sql = sql,
+  name = dbGetQuery(
+    con,
+    statement = 'SELECT CONCAT(Athlete_LastName, ", ", Athlete_FirstName) AS Name
+                 FROM ATHLETES LIMIT 1'
+  )$Name[1]
+)
+
+lift_choices <- dbGetQuery(
+  con,
+  statement = query
+)
+
 first_weight_select <- head(weight_choices, 1)

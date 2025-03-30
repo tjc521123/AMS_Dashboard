@@ -275,7 +275,7 @@ function(input, output, session) {
     query <- sqlInterpolate(
       con,
       sql = sql,
-      name = input$sel_weight_ath
+      name = input$sel_athlete
     )
     
     data <- dbGetQuery(
@@ -285,7 +285,6 @@ function(input, output, session) {
       mutate(
         Date = as.Date(Date)
       )
-    print(data)
     
     plot <- data %>%
       ggplot(mapping = aes(x = Date, y = Weight)) +
@@ -313,7 +312,7 @@ function(input, output, session) {
     query <- sqlInterpolate(
       con,
       sql = sql,
-      name = input$sel_weight_ath
+      name = input$sel_athlete
     )
     
     max_weight <- dbGetQuery(
@@ -328,8 +327,8 @@ function(input, output, session) {
     query <- sqlInterpolate(
       con,
       sql = sql,
-      name = input$sel_weight_ath
-    ) 
+      name = input$sel_athlete
+    )
     
     min_weight <- dbGetQuery(
       con,
@@ -348,6 +347,35 @@ function(input, output, session) {
     )
   })
   
+  #----------------------------------------------------------
+  # Update Lift Selection
+  #----------------------------------------------------------
+  observeEvent(
+    input$sel_athlete,
+    {
+      sql <-'SELECT DISTINCT Lift_Name
+       FROM LIFTS
+       WHERE Lift_ID IN (SELECT Lift_ID FROM SESSION
+                         WHERE Athlete_ID IN (SELECT Athlete_ID 
+                                              FROM ATHLETES
+                                              WHERE CONCAT(Athlete_LastName, ", ", Athlete_FirstName) = ?name))'
+      query <- sqlInterpolate(
+        con,
+        sql = sql,
+        name = input$sel_athlete
+      )
+      
+      lift_choices <- dbGetQuery(
+        con,
+        statement = query
+      )
+      
+      updateSelectInput(
+        inputId = 'sel_lift_ath',
+        choices = lift_choices
+      )
+    }
+  )
   
   
   
@@ -358,5 +386,120 @@ function(input, output, session) {
   
   
   
+  #----------------------------------------------------------
+  # Create Lift Showcase
+  #----------------------------------------------------------
+  output$showcase_lift_estMax <- renderUI({
+    sql <- 'SELECT Date, MAX(Est) AS Est, Reps, RPE, Weight
+            FROM (SELECT strftime("%Y-%m-%d", Session_Date, "unixepoch") AS Date, 
+                         (Weight + 0.0333 * Weight * (Reps + (10 - RPE))) AS Est, 
+                         Weight, Reps, RPE
+                  FROM SESSION
+                  WHERE Athlete_ID IN (SELECT Athlete_ID FROM ATHLETES
+                                       WHERE CONCAT(Athlete_LastName, ", ", Athlete_FirstName) = ?name)
+                    AND Lift_ID IN (SELECT Lift_ID FROM LIFTS
+                                    WHERE Lift_Name = ?lift))'
+    query <- sqlInterpolate(
+      con,
+      sql = sql,
+      name = input$sel_athlete,
+      lift = input$sel_lift_ath
+    )
+    
+    data <- dbGetQuery(
+      con,
+      statement = query
+    )
+
+    value_box(
+      title = 'Best Estimated 1RM',
+      value = round(data$Est[1]),
+      theme = 'green',
+      showcase = as.Date(data$Date[1]),
+      showcase_layout = showcase_left_center(
+        width = 0.4
+      ),
+      p(paste(data$Weight[1], 'lbs. x', data$Reps[1], "@RPE ", data$RPE[1], sep = ''))
+    )
+  })
   
+  output$showcase_lift_best <- renderUI({
+    sql <- 'SELECT strftime("%Y-%m-%d", Session_Date, "unixepoch") AS Date, Weight, Reps, RPE
+            FROM SESSION
+            WHERE Athlete_ID IN (SELECT Athlete_ID FROM ATHLETES
+                                 WHERE CONCAT(Athlete_LastName, ", ", Athlete_FirstName) = ?name)
+              AND Lift_ID IN (SELECT Lift_ID FROM LIFTS
+                              WHERE Lift_Name = ?lift)
+            GROUP BY Date ORDER BY Weight DESC'
+    query <- sqlInterpolate(
+      con,
+      sql = sql,
+      name = input$sel_athlete,
+      lift = input$sel_lift_ath
+    )
+    
+    data <- dbGetQuery(
+      con,
+      statement = query
+    )
+
+    value_box(
+      title = 'Best Performed',
+      value = round(data$Weight[1]),
+      theme = 'green',
+      showcase = as.Date(data$Date[1]),
+      showcase_layout = showcase_left_center(
+        width = 0.4
+      ),
+      p(paste(data$Reps[1], "@RPE ", data$RPE[1], sep = ''))
+    )
+  })
+  #----------------------------------------------------------
+  # Create Lift Plot
+  #----------------------------------------------------------
+  output$plot_ath_lift <- renderPlotly({
+    
+    sql <- 'SELECT strftime("%Y-%m-%d", Session_Date, "unixepoch") AS Date, Est, Weight
+            FROM (SELECT Session_Date, 
+                         MAX((Weight + 0.0333 * Weight * (Reps + (10 - RPE)))) AS Est,
+                         Weight,
+                         Reps, RPE, Athlete_ID, Lift_ID
+                  FROM SESSION
+                  GROUP BY Athlete_ID, Session_Date, Lift_ID)
+            WHERE Athlete_ID IN (SELECT Athlete_ID FROM ATHLETES
+                                WHERE CONCAT(Athlete_LastName, ", ", Athlete_FirstName) = ?name)
+              AND Lift_ID IN (SELECT Lift_ID FROM LIFTS
+                              WHERE Lift_Name = ?lift)'
+    
+    query <- sqlInterpolate(
+      con,
+      sql = sql,
+      name = input$sel_athlete,
+      lift = input$sel_lift_ath
+    )
+    
+    data <- dbGetQuery(
+      con,
+      statement = query
+    ) %>%
+      mutate(
+        Date = as.Date(Date)
+      )
+
+    plot <- data %>%
+      ggplot(mapping = aes(x = Date, y = Weight)) +
+      geom_line(color = 'red') +
+      geom_point(color = 'red') +
+      geom_line(aes(y = Est), color = 'blue') +
+      geom_point(aes(y = Est), color = 'blue') +
+      labs(
+        x = 'Date',
+        y = 'Estimated 1-RM (lbs)'
+      ) +
+      ylim(
+        0, NA
+      )
+    
+    ggplotly(plot)
+  })
 }
