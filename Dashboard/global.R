@@ -9,15 +9,25 @@ pacman::p_load(shiny,
                shinyjs,
                DT,
                digest,
+               googledrive,
                googlesheets4,
                DBI,
                RSQLite,
-               shinybusy)
+               shinybusy,
+               toastui,
+               randomcoloR,
+               rsconnect)
 
 
 con <- dbConnect(RSQLite::SQLite(), "")
 sheet_ID <- '1PK5nDP-xsz9165HUxEMZFN8p5v9FYIiOJYK5KEfHc-g'
 sheet_names <- sheet_names(sheet_ID)
+
+#----------------------------------------------------------
+# Authentication
+#---------------------------------------------------------- 
+#gs4_auth(cache = ".secrets") #for the first time running the app in R to get the OAuth token
+gs4_auth(cache = ".secrets", email = TRUE, use_oob = TRUE)
 
 for (sheet_name in sheet_names) {
   dbWriteTable(con, 

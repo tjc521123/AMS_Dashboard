@@ -184,6 +184,35 @@ function(input, output, session) {
   )
   
   #----------------------------------------------------------
+  # Create Calendar Tab
+  #----------------------------------------------------------
+  output$calendar <- renderCalendar({
+    sql <- 'SELECT ath.Athlete_ID AS calendarID,
+                   strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS start,
+                   strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS end,
+                   "allday" AS category,
+                   CONCAT(ath.Athlete_FirstName, " ", ath.Athlete_LastName) AS title
+            FROM SESSION sess
+            INNER JOIN ATHLETES ath ON
+              ath.Athlete_ID = sess.Athlete_ID
+            GROUP BY calendarID, start'
+    
+    cal_data <- dbGetQuery(
+      con,
+      statement = sql
+    )
+
+    color_list <- list(distinctColorPalette(length((unique(cal_data$title)))))
+
+    ids        <- list(unique(cal_data$title))
+    
+    calendar(
+      data = cal_data,
+      view = tolower(input$sel_calendar_view),
+      navigation = TRUE
+    ) 
+  })
+  #----------------------------------------------------------
   # Create Exercise Table
   #----------------------------------------------------------
   output$ex_table <- renderDataTable({

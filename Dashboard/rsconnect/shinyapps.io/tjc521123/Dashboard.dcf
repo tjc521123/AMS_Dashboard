@@ -1,0 +1,12 @@
+name: Dashboard
+title: Dashboard
+username: tjc521123
+account: tjc521123
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14379246
+bundleId: 10028449
+url: https://tjc521123.shinyapps.io/Dashboard/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

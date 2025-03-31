@@ -90,6 +90,27 @@ page_navbar(
     
   ),
   #----------------------------------------------------------
+  # Calendar Tab
+  #----------------------------------------------------------
+  nav_panel(
+    title = 'Calendar',
+    
+    selectInput(
+      inputId  = 'sel_calendar_view',
+      label    = 'Select Calendar View',
+      choices  = c('Month', 'Week', 'Day'),
+      selected = 'Month'
+    ),
+    
+    calendarOutput(
+      outputId = 'calendar'
+    )
+  ),
+  
+  
+  
+  
+  #----------------------------------------------------------
   # Athlete Tab
   #----------------------------------------------------------
   nav_panel(
