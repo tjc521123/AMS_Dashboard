@@ -187,20 +187,28 @@ function(input, output, session) {
   # Create Calendar Tab
   #----------------------------------------------------------
   output$calendar <- renderCalendar({
-    sql <- 'SELECT ath.Athlete_ID AS calendarID,
-                   strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS start,
-                   strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS end,
-                   "allday" AS category,
-                   CONCAT(ath.Athlete_FirstName, " ", ath.Athlete_LastName) AS title
-            FROM SESSION sess
-            INNER JOIN ATHLETES ath ON
-              ath.Athlete_ID = sess.Athlete_ID
+    sql <- 'SELECT calendarID, start, end, category, title, state, GROUP_CONCAT(body) AS body
+            FROM (SELECT ath.Athlete_ID AS calendarID,
+                         strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS start,
+                         strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS end,
+                         "allday" AS category,
+                         ROUND(MAX(Session_Set)) AS Sets,
+                         "Free" AS state,
+                         CONCAT(ath.Athlete_FirstName, " ", ath.Athlete_LastName) AS title,
+                         CONCAT(lift.Lift_Name, ": ", sess.Session_Set, "x", sess.Reps, "@", sess.Weight, "\n") AS body
+                  FROM SESSION sess
+                  INNER JOIN ATHLETES ath ON
+                    ath.Athlete_ID = sess.Athlete_ID
+                    INNER JOIN LIFTS lift ON
+                      lift.Lift_ID = sess.Lift_ID
+                  GROUP BY calendarID, start, sess.Lift_ID, sess.Reps, sess.Weight)
             GROUP BY calendarID, start'
     
     cal_data <- dbGetQuery(
       con,
       statement = sql
     )
+    View(cal_data)
 
     color_list <- list(distinctColorPalette(length((unique(cal_data$title)))))
 
