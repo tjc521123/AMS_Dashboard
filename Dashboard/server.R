@@ -165,6 +165,12 @@ function(input, output, session) {
         statement = query
       )
       
+      athletes <- dbGetQuery(
+        con,
+        statement = 'SELECT DISTINCT CONCAT(Athlete_LastName, ", ", Athlete_FirstName) AS Name
+                     FROM ATHLETES ORDER BY Name'
+      )
+      
       output$ath_table <- renderDataTable({
         ath_table <- dbGetQuery(
           con, 
@@ -180,6 +186,106 @@ function(input, output, session) {
             method = 'toLocaleDateString'
           )
       })
+    }
+  )
+  
+  show_del_modal <- function(athlete_name, athlete_id, delete_ath = FALSE) {
+    modalDialog(
+      title = 'Delete Athlete',
+      span(
+        'Are you sure you want to delete:'
+      ),
+      span(
+        paste(athlete_name, '\n', 'ID: ', athlete_id, sep = '')
+      ),
+      
+      footer = tagList(
+        actionButton(
+          inputId = 'del_confirm',
+          label   = 'Delete'
+        ),
+        modalButton(
+          label = 'Cancel'
+        )
+      )
+    )
+  }
+  
+  observeEvent(
+    input$del_confirm,
+    {
+      sql <- 'DELETE FROM ATHLETES
+            WHERE Athlete_FirstName = ?first
+              AND Athlete_LastName = ?last'
+      
+      name  <- strsplit(input$sel_del_athlete, ', ')
+      first <- name[[1]][2]
+      last  <- name[[1]][1]
+      
+      query <- sqlInterpolate(
+        con,
+        sql = sql,
+        first = first,
+        last  = last
+      )
+      
+      dbExecute(
+        con,
+        statement = query
+      )
+      
+      athletes <- dbGetQuery(
+        con,
+        statement = 'SELECT DISTINCT CONCAT(Athlete_LastName, ",", Athlete_FirstName) AS Name
+                   FROM ATHLETES ORDER BY Name'
+      )
+      
+      output$ath_table <- renderDataTable({
+        ath_table <- dbGetQuery(
+          con, 
+          statement = 'SELECT CONCAT(Athlete_LastName, ", ", Athlete_FirstName) AS Name,
+                      strftime("%Y-%m-%d", Athlete_DOB, "unixepoch") AS DOB,
+                      Athlete_Gender AS Gender
+                     FROM ATHLETES ORDER BY Name'
+        )
+        
+        datatable(ath_table) %>%
+          formatDate(
+            'DOB',
+            method = 'toLocaleDateString'
+          )
+      })
+      
+      removeModal()
+    }
+  )
+  
+  observeEvent(
+    input$del_athlete,
+    {
+      name  <- strsplit(input$sel_del_athlete, ', ')
+      first <- name[[1]][2]
+      last  <- name[[1]][1]
+      athlete_name = paste(first, last)
+      
+      athlete_id = dbGetQuery(
+        con, 
+        statement = sqlInterpolate(
+          con,
+          sql = 'SELECT Athlete_ID FROM ATHLETES
+                 WHERE Athlete_FirstName = ?first
+                   AND Athlete_LastName = ?last',
+          first = first,
+          last  = last
+        )
+      )
+      
+      showModal(
+        show_del_modal(
+          athlete_name = athlete_name,
+          athlete_id   = athlete_id
+        )
+      )
     }
   )
   

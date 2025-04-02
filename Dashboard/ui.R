@@ -111,7 +111,7 @@ page_navbar(
   
   
   #----------------------------------------------------------
-  # Athlete Tab
+  # Athletes Tab
   #----------------------------------------------------------
   nav_panel(
     title = 'Athletes',
@@ -147,7 +147,22 @@ page_navbar(
           inputId = 'addAth_button',
           label   = 'Add New Athlete',
           class   = 'btn-primary'
+        ),
+        
+        card(
+          selectInput(
+            inputId = 'sel_del_athlete',
+            label   = 'Choose Athlete To Remove',
+            choices = athletes
+          ),
+          
+          actionButton(
+            inputId = 'del_athlete',
+            label   = 'Delete Athlete',
+            class   = 'btn-primary'
+          )
         )
+        
       ),
       
       card(

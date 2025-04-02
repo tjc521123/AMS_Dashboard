@@ -39,6 +39,12 @@ for (sheet_name in sheet_names) {
                overwrite = TRUE)
 }
 
+athletes <- dbGetQuery(
+  con,
+  statement = 'SELECT DISTINCT CONCAT(Athlete_LastName, ", ", Athlete_FirstName) AS Name
+               FROM ATHLETES ORDER BY Name'
+)
+
 weight_choices <- dbGetQuery(
   con,
   statement = 'SELECT CONCAT(Athlete_LastName, ", ", Athlete_FirstName) AS Name
