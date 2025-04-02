@@ -1,6 +1,6 @@
 # AMS_Dashboard
 
-## To-DO
+## To-Do
 * Athlete Tab
   * Update/Delete existing athlete
 * Calendar
