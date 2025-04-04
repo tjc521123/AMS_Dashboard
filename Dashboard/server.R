@@ -432,7 +432,6 @@ function(input, output, session) {
     plot <- data %>%
       ggplot(mapping = aes(x = Date, y = Weight)) +
       geom_line() +
-      geom_point() +
       labs(
         x = 'Date',
         y = 'Body Weight (lbs)'

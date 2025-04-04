@@ -75,3 +75,44 @@ lift_choices <- dbGetQuery(
 )
 
 first_weight_select <- head(weight_choices, 1)
+
+sql <- 'CREATE TEMPORARY VIEW vw_Stress_Index AS 
+        SELECT Athlete_ID, Session_Date, Lift_ID, Session_Set, Reps, Weight, RPE,
+               RIR, Perc_1RM, Stress_Index,
+               SUM(Stress_Index) OVER (
+                PARTITION BY Session_Date, Athlete_ID
+               ) AS Daily_Stress_Index
+        FROM   (SELECT Athlete_ID, Session_Date, Lift_ID, Session_Set, Reps, Weight, RPE,
+                       RIR, Perc_1RM, (Perc_1RM * Reps * (1 + (1 / (RIR + 1)))) AS Stress_Index
+               FROM (SELECT Athlete_ID, Session_Date, Lift_ID, Session_Set, Reps, Weight, RPE,
+                    (10 - RPE) AS RIR, (1 / (1 + 0.0333 * (Reps + 10 - RPE))) AS Perc_1RM
+                    FROM SESSION
+                    GROUP BY Athlete_ID, Session_Date, Lift_ID, Session_Set))'
+
+dbExecute(con,
+          statement = sql)
+
+dbGetQuery(con,
+           statement = 'SELECT * FROM vw_Stress_Index') %>%
+  View()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
