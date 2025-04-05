@@ -78,16 +78,46 @@ first_weight_select <- head(weight_choices, 1)
 
 sql <- 'CREATE TEMPORARY VIEW vw_Stress_Index AS 
         SELECT Athlete_ID, Session_Date, Lift_ID, Session_Set, Reps, Weight, RPE,
-               RIR, Perc_1RM, Stress_Index,
+               RIR, Perc_1RM, Stress_Index, Lift_Tonnage, Tonnage, Set_Exertion_Load,
+               SUM(Set_Exertion_Load) OVER (
+                PARTITION BY Session_Date, Athlete_ID, Lift_ID
+               ) AS Exertion_Load,
+               SUM(Stress_Index) OVER (
+                PARTITION BY Session_Date, Athlete_ID, Lift_ID
+               ) AS Lift_Stress_Index,
                SUM(Stress_Index) OVER (
                 PARTITION BY Session_Date, Athlete_ID
-               ) AS Daily_Stress_Index
-        FROM   (SELECT Athlete_ID, Session_Date, Lift_ID, Session_Set, Reps, Weight, RPE,
-                       RIR, Perc_1RM, (Perc_1RM * Reps * (1 + (1 / (RIR + 1)))) AS Stress_Index
+               ) AS Daily_Stress_Index,
+               SUM(Set_Rel_Vol_Load) OVER (
+                PARTITION BY Session_Date, Athlete_ID, Lift_ID
+               ) AS Lift_Rel_Vol_Load,
+               SUM(Set_Rel_Vol_Load) OVER (
+                PARTITION BY Session_Date, Athlete_ID
+               ) AS Rel_Vol_Load
+        FROM   (WITH RECURSIVE cte(x, e, s) AS (
+                  SELECT 1, 1, 1
+                  UNION ALL
+                  SELECT x+1, exp(x), exp(x - 1) + exp(x) FROM cte WHERE x<10
+                )
+                SELECT Athlete_ID, Session_Date, Lift_ID, Session_Set, Reps, Weight, RPE, Set_Tonnage,
+                       RIR, Perc_1RM, (Perc_1RM * Reps * (1 + (1 / (RIR + 1)))) AS Stress_Index,
+                       SUM(Set_Tonnage) OVER (
+                        PARTITION BY Session_Date, Athlete_ID, Lift_ID
+                       ) AS Lift_Tonnage,
+                       SUM(Set_Tonnage) OVER (
+                        PARTITION BY Session_Date, Athlete_ID
+                       ) AS Tonnage,
+                       (Perc_1RM * Reps) AS Set_Rel_Vol_Load,
+                       SUM(Weight * exp(-0.215 * RIR) * exp(Reps) / s) OVER (
+                        PARTITION BY Session_Date, Athlete_ID, Lift_ID, Session_Set
+                       ) AS Set_Exertion_Load
                FROM (SELECT Athlete_ID, Session_Date, Lift_ID, Session_Set, Reps, Weight, RPE,
-                    (10 - RPE) AS RIR, (1 / (1 + 0.0333 * (Reps + 10 - RPE))) AS Perc_1RM
+                    (10 - RPE) AS RIR, (1 / (1 + 0.0333 * (Reps + 10 - RPE))) AS Perc_1RM,
+                    (Reps * Weight) AS Set_Tonnage
                     FROM SESSION
-                    GROUP BY Athlete_ID, Session_Date, Lift_ID, Session_Set))'
+                    GROUP BY Athlete_ID, Session_Date, Lift_ID, Session_Set)
+               INNER JOIN cte ON
+                    x = Reps)'
 
 dbExecute(con,
           statement = sql)
