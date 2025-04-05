@@ -48,9 +48,9 @@ athletes <- dbGetQuery(
 weight_choices <- dbGetQuery(
   con,
   statement = 'SELECT CONCAT(Athlete_LastName, ", ", Athlete_FirstName) AS Name
-            FROM ATHLETES 
-            WHERE Athlete_ID IN (SELECT DISTINCT Athlete_ID FROM WEIGHT)
-            ORDER BY NAME'
+               FROM ATHLETES 
+               WHERE Athlete_ID IN (SELECT DISTINCT Athlete_ID FROM WEIGHT)
+               ORDER BY NAME'
 )
 
 sql <-'SELECT DISTINCT Lift_Name
@@ -74,9 +74,15 @@ lift_choices <- dbGetQuery(
   statement = query
 )
 
+metric_choices <- c('Stress Index', 
+                    'Tonnage', 
+                    'Exertion Load', 
+                    'Stress Index', 
+                    'Rel Vol Load') %>% unique() %>% sort()
+
 first_weight_select <- head(weight_choices, 1)
 
-sql <- 'CREATE TEMPORARY VIEW vw_Stress_Index AS 
+sql <- 'CREATE TEMPORARY VIEW vw_Load_Metrics AS 
         SELECT Athlete_ID, Session_Date, Lift_ID, Session_Set, Reps, Weight, RPE,
                RIR, Perc_1RM, Stress_Index, Lift_Tonnage, Tonnage, Set_Exertion_Load,
                SUM(Set_Exertion_Load) OVER (
@@ -87,7 +93,7 @@ sql <- 'CREATE TEMPORARY VIEW vw_Stress_Index AS
                ) AS Lift_Stress_Index,
                SUM(Stress_Index) OVER (
                 PARTITION BY Session_Date, Athlete_ID
-               ) AS Daily_Stress_Index,
+               ) AS Stress_Index,
                SUM(Set_Rel_Vol_Load) OVER (
                 PARTITION BY Session_Date, Athlete_ID, Lift_ID
                ) AS Lift_Rel_Vol_Load,
@@ -122,9 +128,9 @@ sql <- 'CREATE TEMPORARY VIEW vw_Stress_Index AS
 dbExecute(con,
           statement = sql)
 
-dbGetQuery(con,
-           statement = 'SELECT * FROM vw_Stress_Index') %>%
-  View()
+# dbGetQuery(con,
+#            statement = 'SELECT * FROM vw_Load_Metric') %>%
+#   View()
 
 
 

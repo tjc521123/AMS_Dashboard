@@ -644,4 +644,55 @@ function(input, output, session) {
     
     ggplotly(plot)
   })
+  
+  
+  #----------------------------------------------------------
+  # Create Metric Plot
+  #----------------------------------------------------------
+  output$plot_lift_metric <- renderPlotly({
+    sql <- 'SELECT ath.Athlete_ID,
+                   vw.Lift_ID,
+                   strftime("%Y-%m-%d", Session_Date, "unixepoch") AS Date,
+                   ?metric AS Metric
+            FROM vw_Load_Metrics AS vw
+            INNER JOIN ATHLETES ath ON
+              ath.Athlete_ID = vw.Athlete_ID 
+              INNER JOIN LIFTS lift ON
+                vw.Lift_ID = lift.Lift_ID
+            WHERE lift.Lift_Name = ?lift
+              AND CONCAT(ath.Athlete_LastName, ", ", ath.Athlete_FirstName) = ?name
+            ORDER BY Date'
+              
+    metric <- str_replace_all(input$sel_lift_metric, pattern = " ", replacement = "_")
+
+    query <- sqlInterpolate(
+      con,
+      sql = sql,
+      metric = as.name(metric),
+      lift = input$sel_lift_ath,
+      name = input$sel_athlete
+    )
+
+    data <- dbGetQuery(
+      con,
+      statement = query
+    ) 
+
+    plot <- data %>%
+      ggplot(mapping = aes(x = Date, y = Metric)) +
+      geom_area(fill = 'blue', alpha = 0.5) +
+      geom_line() +
+      geom_point() +
+      labs(
+        x = 'Date',
+        y = 'Metric'
+      ) +
+      ylim(0, NA)
+    
+    ggplotly(plot)
+  })
+  
+  
+  
+  
 }

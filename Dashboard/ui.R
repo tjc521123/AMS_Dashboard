@@ -86,6 +86,35 @@ page_navbar(
           )
         )
       )
+    ),
+    
+    fluidRow(
+      layout_columns(
+        col_widths = c(3, 9),
+        
+        card(
+          card_header(
+            'Select Metric to View'
+          ),
+          
+          selectInput(
+            inputId = 'sel_lift_metric',
+            label   = '',
+            choices = metric_choices,
+            selected = head(metric_choices, 1)
+          )
+        ),
+        
+        card(
+          card_header(
+            'Load Management Metrics Over Time'
+          ),
+          
+          plotlyOutput(
+            outputId = 'plot_lift_metric'
+          )
+        )
+      )
     )
     
   ),
