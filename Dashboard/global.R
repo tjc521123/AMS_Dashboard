@@ -31,6 +31,71 @@ con <- dbConnect(RSQLite::SQLite(), "")
 sheet_ID <- '1PK5nDP-xsz9165HUxEMZFN8p5v9FYIiOJYK5KEfHc-g'
 sheet_names <- sheet_names(sheet_ID)
 
+dbExecute(
+  conn = con,
+  statement = 'CREATE TABLE IF NOT EXISTS ATHLETES (
+                Athlete_ID INTEGER AUTO_INCREMENT UNIQUE,
+                Athlete_FirstName TEXT,
+                Athlete_LastName  TEXT,
+                Athlete_DOB       DATE,
+                Athlete_Gender    BOOL,
+                PRIMARY KEY (Athlete_ID)
+               )'
+)
+
+dbExecute(
+  conn = con,
+  statement = 'CREATE TABLE IF NOT EXISTS WEIGHT (
+                Athlete_ID INTEGER,
+                Date       DATE,
+                Weight     REAL,
+                Body_Comp  REAL,
+                PRIMARY KEY (Athlete_ID, Date),
+                FOREIGN KEY (Athlete_ID) REFERENCES ATHLETES(Athlete_ID)
+               )'
+)
+
+dbExecute(
+  conn = con,
+  statement = 'CREATE TABLE IF NOT EXISTS LIFTS (
+                Lift_ID INTEGER AUTO_INCREMENT UNIQUE,
+                LiftName TEXT,
+                Main_Lift TEXT,
+                Pattern TEXT,
+                Scaling REAL,
+                Equipment TEXT,
+                Category TEXT,
+                PRIMARY KEY (Lift_ID)
+               )'
+)
+
+dbExecute(
+  conn = con,
+  statement = 'CREATE TABLE IF NOT EXISTS SESSION (
+                Athlete_ID INTEGER,
+                Session_Date DATE,
+                Lift_ID INTEGER,
+                Session_Set INTEGER,
+                Reps INTEGER,
+                Weight REAL,
+                RPE REAL,
+                PRIMARY KEY (Athlete_ID, Session_Date, Lift_ID, Session_Set),
+                FOREIGN KEY (Athlete_ID) REFERENCES ATHLETES(Athlete_ID),
+                FOREIGN KEY (Lift_ID) REFERENCES LIFTS(Lift_ID)
+               )')
+
+dbExecute(
+  conn = con,
+  statement = 'CREATE TABLE IF NOT EXISTS MAXES (
+                Athlete_ID INTEGER,
+                Lift_ID    INTEGER,
+                Lift_Max   REAL,
+                PRIMARY KEY (Athlete_ID, Lift_ID),
+                FOREIGN KEY (Athlete_ID) REFERENCES ATHLETES(Athlete_ID),
+                FOREIGN KEY (Lift_ID) REFERENCES LIFTS(Lift_ID)
+               )'
+)
+
 for (sheet_name in sheet_names) {
   dbWriteTable(con, 
                sheet_name,

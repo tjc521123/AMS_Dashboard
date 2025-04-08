@@ -19,6 +19,10 @@ function(input, output, session) {
           ss = sheet,
           sheet = sheet_name
         )
+      
+      dbDisconnect(
+        conn = con
+      )
     }
   })
   
