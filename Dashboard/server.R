@@ -19,11 +19,11 @@ function(input, output, session) {
           ss = sheet,
           sheet = sheet_name
         )
-      
-      dbDisconnect(
-        conn = con
-      )
     }
+    
+    dbDisconnect(
+      conn = con
+    )
   })
   
   #----------------------------------------------------------
@@ -297,28 +297,56 @@ function(input, output, session) {
   # Create Calendar Tab
   #----------------------------------------------------------
   output$calendar <- renderCalendar({
-    sql <- 'SELECT calendarID, start, end, category, title, state, GROUP_CONCAT(body) AS body
-            FROM (SELECT ath.Athlete_ID AS calendarID,
-                         strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS start,
-                         strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS end,
-                         "allday" AS category,
-                         ROUND(MAX(Session_Set)) AS Sets,
-                         "Free" AS state,
-                         CONCAT(ath.Athlete_FirstName, " ", ath.Athlete_LastName) AS title,
-                         CONCAT(lift.Lift_Name, ": ", sess.Session_Set, "x", sess.Reps, "@", sess.Weight, "\n") AS body
-                  FROM SESSION sess
-                  INNER JOIN ATHLETES ath ON
-                    ath.Athlete_ID = sess.Athlete_ID
-                    INNER JOIN LIFTS lift ON
-                      lift.Lift_ID = sess.Lift_ID
-                  GROUP BY calendarID, start, sess.Lift_ID, sess.Reps, sess.Weight)
-            GROUP BY calendarID, start'
+    if (input$sel_calendar_ath == 'All') {
+      sql <- 'SELECT calendarID, start, end, category, title, state, GROUP_CONCAT(body) AS body
+              FROM (SELECT ath.Athlete_ID AS calendarID,
+                           strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS start,
+                           strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS end,
+                           "allday" AS category,
+                           ROUND(MAX(Session_Set)) AS Sets,
+                           "Free" AS state,
+                           CONCAT(ath.Athlete_FirstName, " ", ath.Athlete_LastName) AS title,
+                           CONCAT(lift.Lift_Name, ": ", sess.Session_Set, "x", sess.Reps, "@", sess.Weight, "\n") AS body
+                    FROM SESSION sess
+                    INNER JOIN ATHLETES ath ON
+                      ath.Athlete_ID = sess.Athlete_ID
+                      INNER JOIN LIFTS lift ON
+                        lift.Lift_ID = sess.Lift_ID
+                    GROUP BY calendarID, start, sess.Lift_ID, sess.Reps, sess.Weight)
+              GROUP BY calendarID, start'
+    } else {
+      name_split <- strsplit(input$sel_calendar_ath, split = ', ')
+      name <- paste(name_split[[1]][[2]], name_split[[1]][[1]])
+      
+      sql <- 'SELECT calendarID, start, end, category, title, state, GROUP_CONCAT(body) AS body
+              FROM (SELECT ath.Athlete_ID AS calendarID,
+                           strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS start,
+                           strftime("%Y-%m-%d", sess.Session_Date, "unixepoch") AS end,
+                           "allday" AS category,
+                           ROUND(MAX(Session_Set)) AS Sets,
+                           "Free" AS state,
+                           CONCAT(ath.Athlete_FirstName, " ", ath.Athlete_LastName) AS title,
+                           CONCAT(lift.Lift_Name, ": ", sess.Session_Set, "x", sess.Reps, "@", sess.Weight, "\n") AS body
+                    FROM SESSION sess
+                    INNER JOIN ATHLETES ath ON
+                      ath.Athlete_ID = sess.Athlete_ID
+                      INNER JOIN LIFTS lift ON
+                        lift.Lift_ID = sess.Lift_ID
+                    GROUP BY calendarID, start, sess.Lift_ID, sess.Reps, sess.Weight)
+              WHERE title = ?name
+              GROUP BY calendarID, start'
+      
+      sql <- sqlInterpolate(
+        conn = con,
+        sql  = sql,
+        name = name
+      )
+    }
     
     cal_data <- dbGetQuery(
       con,
       statement = sql
     )
-    View(cal_data)
 
     color_list <- list(distinctColorPalette(length((unique(cal_data$title)))))
 
@@ -433,9 +461,28 @@ function(input, output, session) {
         Date = as.Date(Date)
       )
     
+    max_df <- data[data$Weight == max(data$Weight, na.rm = TRUE), ] %>%
+      head(1)
+    min_df <- data[data$Weight == min(data$Weight, na.rm = TRUE), ] %>%
+      head(1)
+    
     plot <- data %>%
       ggplot(mapping = aes(x = Date, y = Weight)) +
       geom_line() +
+      geom_segment(
+        data = max_df,
+        mapping = aes(x = Date, y = 0, 
+                      xend = Date, yend = Weight,
+                      colour = 'Max Weight'),
+        linetype = 2
+      ) +
+      geom_segment(
+        data = min_df,
+        mapping = aes(x = Date, y = 0,
+                      xend = Date, yend = Weight,
+                      colour = 'Min Weight'),
+        linetype = 2
+      ) +
       labs(
         x = 'Date',
         y = 'Body Weight (lbs)'

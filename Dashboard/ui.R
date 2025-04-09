@@ -124,11 +124,25 @@ page_navbar(
   nav_panel(
     title = 'Calendar',
     
-    selectInput(
-      inputId  = 'sel_calendar_view',
-      label    = 'Select Calendar View',
-      choices  = c('Month', 'Week', 'Day'),
-      selected = 'Month'
+    fluidRow(
+      height = '100px',
+      card(
+        fillable = FALSE,
+        layout_columns(
+          col_widths = c(6, 6),
+          selectInput(
+            inputId  = 'sel_calendar_view',
+            label    = 'Select Calendar View',
+            choices  = c('Month', 'Week', 'Day'),
+            selected = 'Month'
+          ),
+          selectInput(
+            inputId  = 'sel_calendar_ath',
+            label    = 'Select Athlete to View',
+            choices  = c('All', athletes)
+          )
+        )
+      )
     ),
     
     calendarOutput(
